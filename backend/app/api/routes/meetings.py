@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Response, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -37,27 +37,9 @@ def _get_workspace_meeting(db: Session, workspace_id: str, meeting_id: str) -> M
     return meeting
 
 
-def _reset_meeting_outputs(db: Session, meeting: Meeting) -> None:
-    for segment in list(meeting.transcript_segments):
-        db.delete(segment)
-
-    for draft in list(meeting.drafts):
-        db.delete(draft)
-
-    for action_item in list(meeting.action_items):
-        db.delete(action_item)
-
-    if meeting.analysis is not None:
-        db.delete(meeting.analysis)
-
-    meeting.detected_language = None
-    meeting.duration_seconds = None
-    meeting.error_reason = None
-    meeting.status = MeetingStatus.UPLOADED
-
-
 @router.post("/upload", response_model=MeetingSummary, status_code=status.HTTP_201_CREATED)
 def upload_meeting(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     title: str | None = Form(default=None),
     language_hint: str | None = Form(default=None),
@@ -87,7 +69,7 @@ def upload_meeting(
     db.commit()
     db.refresh(meeting)
 
-    orchestrator.enqueue_meeting(meeting.id)
+    orchestrator.enqueue_meeting(meeting.id, background_tasks=background_tasks)
     return serialize_meeting_summary(meeting)
 
 
@@ -141,15 +123,17 @@ def delete_meeting(
 @router.post("/{meeting_id}/reprocess", response_model=ReprocessResponse, status_code=status.HTTP_202_ACCEPTED)
 def reprocess_meeting(
     meeting_id: str,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     orchestrator: ProcessingOrchestrator = Depends(get_processing_orchestrator),
 ) -> ReprocessResponse:
     meeting = _get_workspace_meeting(db, current_user.workspace_id, meeting_id)
-    _reset_meeting_outputs(db, meeting)
+    meeting.status = MeetingStatus.UPLOADED
+    meeting.error_reason = None
     db.add(meeting)
     db.commit()
     db.refresh(meeting)
 
-    orchestrator.enqueue_meeting(meeting.id)
+    orchestrator.enqueue_meeting(meeting.id, background_tasks=background_tasks)
     return ReprocessResponse(id=meeting.id, status=meeting.status.value)

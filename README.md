@@ -26,6 +26,10 @@ The backend API now includes:
 - local file storage for uploaded recordings
 - a no-op processing orchestrator interface that keeps request handlers separate from background execution
 
+## Epic 2 progress
+
+The in-process mock pipeline now runs behind the orchestrator interface and can take a meeting from `uploaded` to `completed` with deterministic transcript segments, summaries, decisions, action items, Jira drafts, Slack drafts, and job-run history.
+
 ## Run locally
 
 1. Create a virtual environment and install backend dependencies:
