@@ -1,0 +1,8 @@
+# Heavy ASR dependencies — install only on machines that run real transcription.
+# The app runs with ASR_PROVIDER=mock without any of these.
+faster-whisper>=1.0          # English + multilingual (CTranslate2 Whisper large-v3)
+transformers>=4.44           # Fine-tuned Sinhala/Tamil Whisper checkpoints from Hugging Face
+torch>=2.3
+torchaudio>=2.3
+accelerate>=0.30
+# pyannote.audio>=3.1        # Speaker diarization (Phase 2+, needs HF token)
