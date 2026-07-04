@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from datetime import date
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,7 +22,8 @@ from ..models.entities import (
     MeetingStatus,
     TranscriptSegment,
 )
-from .mock_providers import MockLlmProvider, MockTranscriptionProvider
+from .llm import MeetingLlmProvider
+from .mock_providers import MockTranscriptionProvider
 
 PIPELINE_STAGES = [JobStage.INGEST, JobStage.TRANSCRIBE, JobStage.ANALYZE, JobStage.DRAFT]
 
@@ -66,7 +68,7 @@ class FailOnceStageFailureInjector(StageFailureInjector):
 class PipelineProcessor:
     session_factory: sessionmaker
     transcription_provider: MockTranscriptionProvider
-    llm_provider: MockLlmProvider
+    llm_provider: MeetingLlmProvider
     failure_injector: StageFailureInjector
     max_attempts_per_stage: int = 2
 
@@ -220,7 +222,7 @@ class PipelineProcessor:
                     meeting_id=meeting.id,
                     text=action_item.text,
                     owner_name=action_item.owner_name,
-                    due_date=None,
+                    due_date=_parse_optional_due_date(action_item.due_date),
                     evidence_segment_ids=action_item.evidence_segment_ids,
                 )
             )
@@ -322,3 +324,9 @@ class PipelineProcessor:
         if meeting is None:
             raise RuntimeError("Meeting not found for processing")
         return meeting
+
+
+def _parse_optional_due_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    return date.fromisoformat(value)

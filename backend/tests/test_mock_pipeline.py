@@ -37,6 +37,17 @@ def test_upload_runs_mock_pipeline_to_completion(processing_client: TestClient) 
     assert len(detail["drafts"]) == 3
     assert {draft["kind"] for draft in detail["drafts"]} == {"jira_issue", "slack_message"}
 
+    chat_response = processing_client.post(
+        f"/meetings/{upload_body['id']}/chat",
+        headers=_auth_headers(session["access_token"]),
+        json={"question": "What did the team decide about the deploy?"},
+    )
+    assert chat_response.status_code == 200, chat_response.text
+    chat_body = chat_response.json()
+    assert chat_body["not_discussed"] is False
+    assert "deploy" in chat_body["answer_text"].lower()
+    assert len(chat_body["citations"]) == 2
+
 
 def test_failed_stage_can_be_reprocessed_from_failure_point(processing_client: TestClient) -> None:
     session = _sign_up(

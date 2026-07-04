@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..models.entities import TranscriptSegment
+from .llm import ActionItemData, MeetingAnalysisResult, MockLlmProvider
 
 
 @dataclass(frozen=True)
@@ -20,23 +20,6 @@ class TranscriptionResult:
     dominant_language: str
     duration_seconds: float
     segments: list[TranscriptSegmentData]
-
-
-@dataclass(frozen=True)
-class ActionItemData:
-    text: str
-    owner_name: str | None
-    due_date: str | None
-    evidence_segment_ids: list[str]
-
-
-@dataclass(frozen=True)
-class MeetingAnalysisResult:
-    summary_original_language: str
-    summary_english: str
-    key_points: list[dict[str, object]]
-    decisions: list[dict[str, object]]
-    action_items: list[ActionItemData]
 
 
 class MockTranscriptionProvider:
@@ -70,47 +53,4 @@ class MockTranscriptionProvider:
             dominant_language=dominant_language,
             duration_seconds=segments[-1].end_seconds,
             segments=segments,
-        )
-
-
-class MockLlmProvider:
-    def analyze_meeting(self, meeting_title: str, segments: list[TranscriptSegment]) -> MeetingAnalysisResult:
-        _ = meeting_title
-        first_segment_id = segments[0].id
-        second_segment_id = segments[1].id
-        third_segment_id = segments[2].id
-
-        return MeetingAnalysisResult(
-            summary_original_language="Team eka deploy plan eka discuss kala saha verify karana weda beda gatta.",
-            summary_english="The team paused the deploy, assigned staging verification, and planned a Slack update after QA.",
-            key_points=[
-                {
-                    "text": "The deploy should wait until staging is verified.",
-                    "evidence_segment_ids": [first_segment_id, second_segment_id],
-                },
-                {
-                    "text": "A client-facing Slack update will be sent after QA passes.",
-                    "evidence_segment_ids": [third_segment_id],
-                },
-            ],
-            decisions=[
-                {
-                    "text": "Do not deploy until staging verification is complete.",
-                    "evidence_segment_ids": [first_segment_id, second_segment_id],
-                }
-            ],
-            action_items=[
-                ActionItemData(
-                    text="Verify the login fix in staging before the deploy window.",
-                    owner_name=segments[1].speaker_label,
-                    due_date=None,
-                    evidence_segment_ids=[second_segment_id],
-                ),
-                ActionItemData(
-                    text="Post the client update in Slack after QA passes.",
-                    owner_name=segments[2].speaker_label,
-                    due_date=None,
-                    evidence_segment_ids=[third_segment_id],
-                ),
-            ],
         )

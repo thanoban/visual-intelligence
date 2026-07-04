@@ -23,6 +23,10 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str = ""
     claude_model: str = "claude-opus-4-8"
+    llm_max_output_tokens: int = 4000
+    llm_chunk_window_seconds: int = 900
+    llm_chunk_overlap_seconds: int = 120
+    llm_effort: str = "high"
 
     # Google Cloud Vertex AI (llm_provider=claude_vertex). Auth uses application
     # default credentials: `gcloud auth application-default login`.

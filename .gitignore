@@ -11,6 +11,9 @@ backend/.env
 backend/storage/
 backend/*.db
 backend/*.sqlite3
+*.db
+*.db-journal
+*.sqlite3
 
 frontend/.next/
 frontend/node_modules/

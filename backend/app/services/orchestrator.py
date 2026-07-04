@@ -6,7 +6,8 @@ from functools import lru_cache
 from fastapi import BackgroundTasks
 
 from ..db import SessionLocal
-from .mock_providers import MockLlmProvider, MockTranscriptionProvider
+from .llm import get_meeting_llm_provider
+from .mock_providers import MockTranscriptionProvider
 from .pipeline import NoStageFailureInjector, PipelineProcessor
 
 
@@ -45,7 +46,7 @@ def get_processing_orchestrator() -> ProcessingOrchestrator:
     processor = PipelineProcessor(
         session_factory=SessionLocal,
         transcription_provider=MockTranscriptionProvider(),
-        llm_provider=MockLlmProvider(),
+        llm_provider=get_meeting_llm_provider(),
         failure_injector=NoStageFailureInjector(),
     )
     return BackgroundProcessingOrchestrator(processor=processor)

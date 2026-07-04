@@ -11,7 +11,8 @@ from backend.app.config import get_settings
 from backend.app.db import Base, get_db
 from backend.app.main import create_app
 from backend.app.models import entities as _entities  # noqa: F401
-from backend.app.services.mock_providers import MockLlmProvider, MockTranscriptionProvider
+from backend.app.services.llm import MockLlmProvider
+from backend.app.services.mock_providers import MockTranscriptionProvider
 from backend.app.services.orchestrator import BackgroundProcessingOrchestrator, RecordingProcessingOrchestrator, get_processing_orchestrator
 from backend.app.services.pipeline import FailOnceStageFailureInjector, PipelineProcessor
 from backend.app.services.storage import LocalStorageService, get_storage_service

@@ -9,8 +9,17 @@ from sqlalchemy.orm import Session, selectinload
 from ...db import get_db
 from ...dependencies import get_current_user
 from ...models.entities import Draft, Meeting, MeetingAnalysis, MeetingSource, MeetingStatus, TranscriptSegment, User
-from ...schemas.meetings import MeetingDetailResponse, MeetingListResponse, MeetingSummary, ReprocessResponse
+from ...schemas.meetings import (
+    AskMeetingQuestionRequest,
+    MeetingAnswerCitationResponse,
+    MeetingDetailResponse,
+    MeetingListResponse,
+    MeetingQuestionResponse,
+    MeetingSummary,
+    ReprocessResponse,
+)
 from ...serializers import serialize_meeting_detail, serialize_meeting_summary
+from ...services.llm import MeetingLlmProvider, get_meeting_llm_provider
 from ...services.orchestrator import ProcessingOrchestrator, get_processing_orchestrator
 from ...services.storage import LocalStorageService, get_storage_service
 
@@ -137,3 +146,42 @@ def reprocess_meeting(
 
     orchestrator.enqueue_meeting(meeting.id, background_tasks=background_tasks)
     return ReprocessResponse(id=meeting.id, status=meeting.status.value)
+
+
+@router.post("/{meeting_id}/chat", response_model=MeetingQuestionResponse)
+def ask_meeting_question(
+    meeting_id: str,
+    payload: AskMeetingQuestionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    llm_provider: MeetingLlmProvider = Depends(get_meeting_llm_provider),
+) -> MeetingQuestionResponse:
+    meeting = _get_workspace_meeting(db, current_user.workspace_id, meeting_id)
+    if not meeting.transcript_segments:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Meeting transcript is not ready for question answering",
+        )
+
+    answer = llm_provider.answer_question(
+        meeting_title=meeting.title,
+        segments=meeting.transcript_segments,
+        question=payload.question,
+    )
+    segments_by_id = {segment.id: segment for segment in meeting.transcript_segments}
+    citations = [
+        MeetingAnswerCitationResponse(
+            segment_id=segment.id,
+            start_seconds=segment.start_seconds,
+            end_seconds=segment.end_seconds,
+            speaker_label=segment.speaker_label,
+            text=segment.text,
+        )
+        for segment_id in answer.cited_segment_ids
+        if (segment := segments_by_id.get(segment_id)) is not None
+    ]
+    return MeetingQuestionResponse(
+        answer_text=answer.answer_text,
+        not_discussed=answer.not_discussed,
+        citations=citations,
+    )

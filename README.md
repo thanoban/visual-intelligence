@@ -30,6 +30,16 @@ The backend API now includes:
 
 The in-process mock pipeline now runs behind the orchestrator interface and can take a meeting from `uploaded` to `completed` with deterministic transcript segments, summaries, decisions, action items, Jira drafts, Slack drafts, and job-run history.
 
+## Epic 3 progress
+
+The backend now has a configurable meeting LLM provider layer with:
+
+- a real Anthropic Claude provider path
+- a Vertex AI Claude provider path
+- transcript chunking with overlap for long analyses
+- an ask-the-meeting chat endpoint with cited transcript segments
+- smoke tests that auto-skip when live SDK credentials are not present
+
 ## Run locally
 
 1. Create a virtual environment and install backend dependencies:

@@ -74,3 +74,21 @@ class MeetingListResponse(BaseModel):
 class ReprocessResponse(BaseModel):
     id: str
     status: str
+
+
+class AskMeetingQuestionRequest(BaseModel):
+    question: str
+
+
+class MeetingAnswerCitationResponse(BaseModel):
+    segment_id: str
+    start_seconds: float
+    end_seconds: float
+    speaker_label: str | None
+    text: str
+
+
+class MeetingQuestionResponse(BaseModel):
+    answer_text: str
+    not_discussed: bool
+    citations: list[MeetingAnswerCitationResponse]
