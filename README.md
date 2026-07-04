@@ -1,5 +1,7 @@
 # Meeting Intelligence (VisualSprint)
 
+AI-powered screen-aware meeting intelligence that transforms engineering discussions into actionable, evidence-backed workflows.
+
 This repository is the implementation workspace for the multilingual AI meeting assistant described in the planning docs under [`docs/`](./docs).
 
 ## Repository layout
