@@ -11,6 +11,7 @@ from backend.app.config import get_settings
 from backend.app.db import Base, get_db
 from backend.app.main import create_app
 from backend.app.models import entities as _entities  # noqa: F401
+from backend.app.services.audio import NoOpMeetingAudioNormalizer
 from backend.app.services.llm import MockLlmProvider
 from backend.app.services.mock_providers import MockTranscriptionProvider
 from backend.app.services.orchestrator import BackgroundProcessingOrchestrator, RecordingProcessingOrchestrator, get_processing_orchestrator
@@ -33,6 +34,7 @@ def _build_test_client(tmp_path: Path, *, use_processing_pipeline: bool) -> Test
             transcription_provider=MockTranscriptionProvider(),
             llm_provider=MockLlmProvider(),
             failure_injector=failure_injector,
+            audio_normalizer=NoOpMeetingAudioNormalizer(),
         )
         orchestrator = BackgroundProcessingOrchestrator(processor=processor)
     else:

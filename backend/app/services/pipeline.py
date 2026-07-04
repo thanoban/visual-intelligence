@@ -22,6 +22,8 @@ from ..models.entities import (
     MeetingStatus,
     TranscriptSegment,
 )
+from .asr import SpeechTranscriptionProvider
+from .audio import MeetingAudioNormalizer
 from .llm import MeetingLlmProvider
 from .mock_providers import MockTranscriptionProvider
 
@@ -67,9 +69,10 @@ class FailOnceStageFailureInjector(StageFailureInjector):
 @dataclass
 class PipelineProcessor:
     session_factory: sessionmaker
-    transcription_provider: MockTranscriptionProvider
+    transcription_provider: SpeechTranscriptionProvider
     llm_provider: MeetingLlmProvider
     failure_injector: StageFailureInjector
+    audio_normalizer: MeetingAudioNormalizer
     max_attempts_per_stage: int = 2
 
     def process_meeting(self, meeting_id: str) -> None:
@@ -156,6 +159,7 @@ class PipelineProcessor:
     def _run_ingest(self, meeting: Meeting) -> None:
         if not meeting.audio_object_key:
             raise FileNotFoundError("Meeting upload is missing a stored audio file")
+        meeting.audio_object_key = self.audio_normalizer.normalize_meeting_audio(meeting.audio_object_key)
 
     def _run_transcribe(self, db: Session, meeting: Meeting) -> None:
         audio_path = Path(meeting.audio_object_key)

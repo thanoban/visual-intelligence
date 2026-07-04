@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     asr_model_en: str = "openai/whisper-large-v3"
     asr_model_si: str = "Lingalingeswaran/whisper-small-sinhala"
     asr_model_ta: str = "vasista22/whisper-tamil-medium"
+    asr_device: str = "auto"
+    asr_compute_type: str = "auto"
+    asr_beam_size: int = 5
+    asr_vad_filter: bool = True
+    normalized_audio_sample_rate_hz: int = 16000
+    normalized_audio_channels: int = 1
 
     def storage_path(self) -> Path:
         path = Path(self.storage_dir)
