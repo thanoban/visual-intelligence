@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     storage_dir: str = "./storage"
     app_secret_key: str = "visualsprint-dev-secret"
     auth_token_ttl_seconds: int = 60 * 60 * 12
+    frontend_origin_allowlist: str = (
+        "http://localhost:3000,"
+        "http://127.0.0.1:3000,"
+        "http://localhost:3001,"
+        "http://127.0.0.1:3001"
+    )
 
     asr_provider: str = "mock"  # mock | whisper | hf
     llm_provider: str = "mock"  # mock | claude | claude_vertex
@@ -44,6 +50,9 @@ class Settings(BaseSettings):
     asr_vad_filter: bool = True
     normalized_audio_sample_rate_hz: int = 16000
     normalized_audio_channels: int = 1
+
+    def cors_allowed_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.frontend_origin_allowlist.split(",") if origin.strip()]
 
     def storage_path(self) -> Path:
         path = Path(self.storage_dir)

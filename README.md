@@ -7,7 +7,7 @@ This repository is the implementation workspace for the multilingual AI meeting 
 ## Repository layout
 
 - `backend/` - FastAPI API service and future worker-side pipeline code
-- `frontend/` - Next.js app placeholder for the MVP web client
+- `frontend/` - Next.js MVP web client for auth, upload, meeting review, and cited chat
 - `docs/` - product, scope, architecture, integration, and build plans
 
 ## Epic 0 status
@@ -49,6 +49,15 @@ The backend now includes:
 - ingest-time audio normalization plumbing for real ASR paths
 - a local benchmark harness at `backend/scripts/benchmark_asr.py` that measures WER, CER, and realtime factor from a folder of audio plus matching transcript files
 
+## Epic 5 progress
+
+The frontend now includes:
+
+- a Next.js App Router client for sign-up, sign-in, and persisted workspace sessions
+- a meeting queue view with upload, status tracking, reprocess, delete, and search
+- a meeting detail view with blob-backed audio playback, transcript jumps, bilingual summaries, action items, draft queue visibility, and cited meeting chat
+- backend support for the frontend path through authenticated meeting-audio streaming and local CORS defaults for `localhost` / `127.0.0.1` on ports `3000` and `3001`
+
 ## Run locally
 
 1. Create a virtual environment and install backend dependencies:
@@ -71,19 +80,41 @@ The backend now includes:
    Copy-Item .\backend\.env.example .\backend\.env
    ```
 
-3. Start PostgreSQL if you want a local database service:
+3. Install frontend dependencies and copy the frontend environment template:
+
+   ```powershell
+   Set-Location .\frontend
+   npm install
+   Copy-Item .\.env.example .\.env.local
+   Set-Location ..
+   ```
+
+4. Start PostgreSQL if you want a local database service:
 
    ```powershell
    docker compose up -d db
    ```
 
-4. Run the API:
+5. Run the API:
 
    ```powershell
-   uvicorn backend.app.main:app --reload
+   uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
    ```
 
-5. Verify the health endpoint:
+6. Run the frontend:
+
+   ```powershell
+   Set-Location .\frontend
+   npm run dev
+   ```
+
+   If port `3000` is already busy, run:
+
+   ```powershell
+   npm run dev -- --port 3001
+   ```
+
+7. Verify the health endpoint:
 
    ```powershell
    Invoke-RestMethod http://127.0.0.1:8000/health

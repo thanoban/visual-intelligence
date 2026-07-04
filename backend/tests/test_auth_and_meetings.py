@@ -67,6 +67,19 @@ def test_invite_acceptance_and_session_flow(client: TestClient) -> None:
     assert session_response.json()["user"]["email"] == "member@example.com"
 
 
+def test_cors_preflight_allows_local_frontend_origin(client: TestClient) -> None:
+    response = client.options(
+        "/health",
+        headers={
+            "Origin": "http://127.0.0.1:3001",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:3001"
+
+
 def test_meeting_upload_list_detail_delete_and_workspace_boundary(client: TestClient) -> None:
     first_user = _sign_up(
         client,
@@ -94,6 +107,11 @@ def test_meeting_upload_list_detail_delete_and_workspace_boundary(client: TestCl
 
     stored_path = client.storage_service.resolve_relative_path(meeting["audio_object_key"])  # type: ignore[attr-defined]
     assert stored_path.exists()
+
+    audio_response = client.get(f"/meetings/{meeting['id']}/audio", headers=_auth_headers(first_user["access_token"]))
+    assert audio_response.status_code == 200, audio_response.text
+    assert audio_response.content == b"fake audio bytes"
+    assert audio_response.headers["content-type"].startswith("audio/")
 
     first_list = client.get("/meetings", headers=_auth_headers(first_user["access_token"]))
     assert first_list.status_code == 200, first_list.text

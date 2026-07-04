@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import mimetypes
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Response, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -112,6 +114,25 @@ def get_meeting_detail(
 ) -> MeetingDetailResponse:
     meeting = _get_workspace_meeting(db, current_user.workspace_id, meeting_id)
     return serialize_meeting_detail(meeting)
+
+
+@router.get("/{meeting_id}/audio")
+def get_meeting_audio(
+    meeting_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    storage: LocalStorageService = Depends(get_storage_service),
+) -> FileResponse:
+    meeting = _get_workspace_meeting(db, current_user.workspace_id, meeting_id)
+    if not meeting.audio_object_key:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting audio not found")
+
+    audio_path = storage.resolve_relative_path(meeting.audio_object_key)
+    if not audio_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting audio not found")
+
+    media_type = mimetypes.guess_type(audio_path.name)[0] or "application/octet-stream"
+    return FileResponse(audio_path, media_type=media_type, filename=audio_path.name)
 
 
 @router.delete("/{meeting_id}", status_code=status.HTTP_204_NO_CONTENT)
