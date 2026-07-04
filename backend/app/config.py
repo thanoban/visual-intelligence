@@ -15,6 +15,8 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./visualsprint.db"
     storage_dir: str = "./storage"
+    app_secret_key: str = "visualsprint-dev-secret"
+    auth_token_ttl_seconds: int = 60 * 60 * 12
 
     asr_provider: str = "mock"  # mock | whisper | hf
     llm_provider: str = "mock"  # mock | claude | claude_vertex

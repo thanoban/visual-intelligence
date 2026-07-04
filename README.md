@@ -18,6 +18,14 @@ The repository now includes a runnable FastAPI entrypoint, a health endpoint, a 
 
 The initial SQLAlchemy domain model is now in place for workspaces, users, invites, meetings, transcript segments, analyses, action items, drafts, integrations, job runs, and audit events.
 
+The backend API now includes:
+
+- sign-up, sign-in, and session endpoints
+- workspace member invites and invite acceptance
+- meeting upload, list, detail, delete, and reprocess endpoints
+- local file storage for uploaded recordings
+- a no-op processing orchestrator interface that keeps request handlers separate from background execution
+
 ## Run locally
 
 1. Create a virtual environment and install backend dependencies:

@@ -21,6 +21,12 @@ engine = _make_engine()
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
+def init_db() -> None:
+    from .models import entities as _entities  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)
+
+
 def get_db():
     db: Session = SessionLocal()
     try:
