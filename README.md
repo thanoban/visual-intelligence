@@ -14,6 +14,10 @@ This repository is the implementation workspace for the multilingual AI meeting 
 
 The repository now includes a runnable FastAPI entrypoint, a health endpoint, a backend test, local environment scaffolding, and Docker Compose for PostgreSQL.
 
+## Epic 1 progress
+
+The initial SQLAlchemy domain model is now in place for workspaces, users, invites, meetings, transcript segments, analyses, action items, drafts, integrations, job runs, and audit events.
+
 ## Run locally
 
 1. Create a virtual environment and install backend dependencies:
