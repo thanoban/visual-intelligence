@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from backend.app.models.entities import JobStage
+from backend.app.models.entities import JobStage, User, UserRole
 from backend.tests.test_auth_and_meetings import _auth_headers, _sign_up
 
 
@@ -99,3 +99,105 @@ def test_failed_stage_can_be_reprocessed_from_failure_point(processing_client: T
     assert final_body["status"] == "completed"
     assert len(final_body["action_items"]) == 2
     assert len(final_body["drafts"]) == 3
+
+
+def test_pipeline_matches_action_item_owner_to_unique_workspace_user(processing_client: TestClient) -> None:
+    session = _sign_up(
+        processing_client,
+        email="owner-match@example.com",
+        name="Asha Perera",
+        workspace_name="Owner Match Workspace",
+    )
+    workspace_id = session["workspace"]["id"]
+
+    with processing_client.testing_session_factory() as db:  # type: ignore[attr-defined]
+        ravi = User(
+            email="ravi.match@example.com",
+            name="Ravi Perera",
+            password_hash="hashed",
+            role=UserRole.MEMBER,
+            workspace_id=workspace_id,
+        )
+        nisha = User(
+            email="nisha.match@example.com",
+            name="Nisha Silva",
+            password_hash="hashed",
+            role=UserRole.MEMBER,
+            workspace_id=workspace_id,
+        )
+        db.add_all([ravi, nisha])
+        db.commit()
+        ravi_id = ravi.id
+        nisha_id = nisha.id
+
+    upload_response = processing_client.post(
+        "/meetings/upload",
+        headers=_auth_headers(session["access_token"]),
+        files={"file": ("owner-match.wav", b"fake audio bytes", "audio/wav")},
+        data={"title": "Owner Match", "language_hint": "en"},
+    )
+    assert upload_response.status_code == 201, upload_response.text
+
+    detail_response = processing_client.get(
+        f"/meetings/{upload_response.json()['id']}",
+        headers=_auth_headers(session["access_token"]),
+    )
+    assert detail_response.status_code == 200, detail_response.text
+    action_items_by_owner = {item["owner_name"]: item for item in detail_response.json()["action_items"]}
+
+    assert action_items_by_owner["Ravi"]["owner_user_id"] == ravi_id
+    assert action_items_by_owner["Nisha"]["owner_user_id"] == nisha_id
+
+
+def test_pipeline_leaves_owner_user_empty_when_name_match_is_ambiguous(processing_client: TestClient) -> None:
+    session = _sign_up(
+        processing_client,
+        email="owner-ambiguous@example.com",
+        name="Asha Perera",
+        workspace_name="Owner Ambiguous Workspace",
+    )
+    workspace_id = session["workspace"]["id"]
+
+    with processing_client.testing_session_factory() as db:  # type: ignore[attr-defined]
+        first_ravi = User(
+            email="ravi.one@example.com",
+            name="Ravi Perera",
+            password_hash="hashed",
+            role=UserRole.MEMBER,
+            workspace_id=workspace_id,
+        )
+        second_ravi = User(
+            email="ravi.two@example.com",
+            name="Ravi Fernando",
+            password_hash="hashed",
+            role=UserRole.MEMBER,
+            workspace_id=workspace_id,
+        )
+        nisha = User(
+            email="nisha.unique@example.com",
+            name="Nisha Silva",
+            password_hash="hashed",
+            role=UserRole.MEMBER,
+            workspace_id=workspace_id,
+        )
+        db.add_all([first_ravi, second_ravi, nisha])
+        db.commit()
+        nisha_id = nisha.id
+
+    upload_response = processing_client.post(
+        "/meetings/upload",
+        headers=_auth_headers(session["access_token"]),
+        files={"file": ("owner-ambiguous.wav", b"fake audio bytes", "audio/wav")},
+        data={"title": "Owner Ambiguous", "language_hint": "en"},
+    )
+    assert upload_response.status_code == 201, upload_response.text
+
+    detail_response = processing_client.get(
+        f"/meetings/{upload_response.json()['id']}",
+        headers=_auth_headers(session["access_token"]),
+    )
+    assert detail_response.status_code == 200, detail_response.text
+    action_items_by_owner = {item["owner_name"]: item for item in detail_response.json()["action_items"]}
+
+    assert action_items_by_owner["Ravi"]["owner_user_id"] is None
+    assert action_items_by_owner["Nisha"]["owner_user_id"] == nisha_id

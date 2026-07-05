@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker, selectinload
@@ -21,6 +22,7 @@ from ..models.entities import (
     MeetingAnalysis,
     MeetingStatus,
     TranscriptSegment,
+    User,
 )
 from .asr import SpeechTranscriptionProvider
 from .audio import MeetingAudioNormalizer
@@ -220,12 +222,14 @@ class PipelineProcessor:
             )
         )
 
+        workspace_users = list(db.scalars(select(User).where(User.workspace_id == meeting.workspace_id)))
         for action_item in analysis_result.action_items:
             db.add(
                 ActionItem(
                     meeting_id=meeting.id,
                     text=action_item.text,
                     owner_name=action_item.owner_name,
+                    owner_user_id=_match_owner_user_id(action_item.owner_name, workspace_users),
                     due_date=_parse_optional_due_date(action_item.due_date),
                     evidence_segment_ids=action_item.evidence_segment_ids,
                 )
@@ -334,3 +338,36 @@ def _parse_optional_due_date(value: str | None) -> date | None:
     if not value:
         return None
     return date.fromisoformat(value)
+
+
+def _match_owner_user_id(owner_name: str | None, workspace_users: list[User]) -> str | None:
+    normalized_owner_name = _normalize_person_name(owner_name)
+    if not normalized_owner_name:
+        return None
+
+    exact_matches = [user for user in workspace_users if _normalize_person_name(user.name) == normalized_owner_name]
+    if len(exact_matches) == 1:
+        return exact_matches[0].id
+    if exact_matches:
+        return None
+
+    owner_tokens = normalized_owner_name.split()
+    if len(owner_tokens) != 1:
+        return None
+
+    single_token = owner_tokens[0]
+    token_matches = [
+        user
+        for user in workspace_users
+        if single_token in _normalize_person_name(user.name).split()
+    ]
+    if len(token_matches) == 1:
+        return token_matches[0].id
+    return None
+
+
+def _normalize_person_name(value: str | None) -> str:
+    if not value:
+        return ""
+    normalized = re.sub(r"\s+", " ", "".join(char if char.isalnum() else " " for char in value.casefold())).strip()
+    return normalized

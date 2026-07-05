@@ -37,8 +37,11 @@ The backend now has a configurable meeting LLM provider layer with:
 - a real Anthropic Claude provider path
 - a Vertex AI Claude provider path
 - transcript chunking with overlap for long analyses
+- streamed structured-output requests for larger Claude responses without deprecated sampling parameters
 - an ask-the-meeting chat endpoint with cited transcript segments
 - smoke tests that auto-skip when live SDK credentials are not present
+
+Action-item extraction now also links an owner to a workspace member when there is a single confident name match, which keeps later Jira assignment decisions grounded in real users instead of only free-text names.
 
 ## Epic 4 progress
 

@@ -345,28 +345,35 @@ class AnthropicMeetingLlmProvider:
         user_prompt: str,
     ) -> TStructuredModel:
         messages_api = self._client.messages
+        base_request = {
+            "model": self._settings.claude_model,
+            "max_tokens": self._settings.llm_max_output_tokens,
+            "system": system_prompt,
+            "messages": [{"role": "user", "content": user_prompt}],
+            "thinking": {"type": "adaptive"},
+        }
+        structured_request = {
+            **base_request,
+            "output_config": {"effort": self._settings.llm_effort},
+        }
+        if hasattr(messages_api, "stream"):
+            with messages_api.stream(**structured_request, output_format=output_model) as stream:
+                streamed_message = stream.get_final_message()
+                parsed_output = getattr(streamed_message, "parsed_output", None)
+                if parsed_output is not None:
+                    return cast(TStructuredModel, parsed_output)
+                response_text = stream.get_final_text()
+                return output_model.model_validate_json(response_text)
+
         if hasattr(messages_api, "parse"):
-            parsed_response = messages_api.parse(
-                model=self._settings.claude_model,
-                max_tokens=self._settings.llm_max_output_tokens,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
-                thinking={"type": "adaptive"},
-                output_config={"effort": self._settings.llm_effort},
-                output_format=output_model,
-                temperature=0,
-            )
+            parsed_response = messages_api.parse(**structured_request, output_format=output_model)
             parsed_output = getattr(parsed_response, "parsed_output", None)
             if parsed_output is None:
                 raise RuntimeError("Anthropic structured output parsing returned no parsed output")
             return cast(TStructuredModel, parsed_output)
 
         raw_response = messages_api.create(
-            model=self._settings.claude_model,
-            max_tokens=self._settings.llm_max_output_tokens,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
-            thinking={"type": "adaptive"},
+            **base_request,
             output_config={
                 "effort": self._settings.llm_effort,
                 "format": {
@@ -374,7 +381,6 @@ class AnthropicMeetingLlmProvider:
                     "schema": output_model.model_json_schema(),
                 },
             },
-            temperature=0,
         )
         response_text = "".join(
             block.text for block in raw_response.content if getattr(block, "type", None) == "text"
