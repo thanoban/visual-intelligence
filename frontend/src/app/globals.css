@@ -557,7 +557,8 @@ textarea {
   gap: 0.9rem;
 }
 
-.integration-row {
+.integration-row,
+.team-row {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
@@ -567,6 +568,48 @@ textarea {
   border-radius: 8px;
   background: var(--panel);
   box-shadow: var(--shadow);
+}
+
+.team-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.team-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.team-copy span {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.pending-section {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.compact-heading h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.compact-heading p {
+  margin: 0.35rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.invite-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.invite-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
 }
 
 .meeting-row {
@@ -745,7 +788,8 @@ textarea {
     justify-content: flex-start;
   }
 
-  .integration-row {
+  .integration-row,
+  .team-row {
     align-items: flex-start;
     flex-direction: column;
   }

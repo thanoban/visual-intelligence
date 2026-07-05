@@ -60,5 +60,7 @@ class InviteResponse(BaseModel):
     token: str
     workspace_id: str
     invited_by_user_id: str | None
+    expires_at: datetime | None
+    accepted_at: datetime | None
     created_at: datetime
     updated_at: datetime

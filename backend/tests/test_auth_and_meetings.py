@@ -222,3 +222,70 @@ def test_workspace_settings_allow_owner_update_and_member_read(client: TestClien
     assert member_body["workspace"]["settings"]["default_language_hint"] == "si"
     assert member_body["workspace"]["settings"]["slack_channel"] == "#delivery"
     assert member_body["workspace"]["settings"]["slack_auto_post"] is True
+
+
+def test_workspace_members_lists_members_and_invites(client: TestClient) -> None:
+    owner_session = _sign_up(
+        client,
+        email="members-owner@example.com",
+        name="Members Owner",
+        workspace_name="Members Workspace",
+    )
+    owner_headers = _auth_headers(owner_session["access_token"])
+
+    pending_invite_response = client.post(
+        "/auth/invites",
+        headers=owner_headers,
+        json={"email": "pending-member@example.com"},
+    )
+    assert pending_invite_response.status_code == 201, pending_invite_response.text
+    pending_invite = pending_invite_response.json()
+    assert pending_invite["expires_at"] is not None
+
+    accepted_invite_response = client.post(
+        "/auth/invites",
+        headers=owner_headers,
+        json={"email": "accepted-member@example.com"},
+    )
+    assert accepted_invite_response.status_code == 201, accepted_invite_response.text
+    accepted_invite = accepted_invite_response.json()
+
+    accepted_member_response = client.post(
+        "/auth/invites/accept",
+        json={
+            "token": accepted_invite["token"],
+            "email": "accepted-member@example.com",
+            "name": "Accepted Member",
+            "password": "pass12345",
+        },
+    )
+    assert accepted_member_response.status_code == 201, accepted_member_response.text
+
+    members_response = client.get("/workspace/members", headers=owner_headers)
+    assert members_response.status_code == 200, members_response.text
+    body = members_response.json()
+
+    assert [member["email"] for member in body["members"]] == [
+        "members-owner@example.com",
+        "accepted-member@example.com",
+    ]
+    invites_by_email = {invite["email"]: invite for invite in body["invites"]}
+    assert invites_by_email["pending-member@example.com"]["status"] == "pending"
+    assert invites_by_email["accepted-member@example.com"]["status"] == "accepted"
+
+
+def test_workspace_invites_reject_duplicate_pending_email(client: TestClient) -> None:
+    owner_session = _sign_up(
+        client,
+        email="duplicate-owner@example.com",
+        name="Duplicate Owner",
+        workspace_name="Duplicate Workspace",
+    )
+    headers = _auth_headers(owner_session["access_token"])
+
+    first_invite = client.post("/auth/invites", headers=headers, json={"email": "dup@example.com"})
+    assert first_invite.status_code == 201, first_invite.text
+
+    duplicate_invite = client.post("/auth/invites", headers=headers, json={"email": "dup@example.com"})
+    assert duplicate_invite.status_code == 409
+    assert duplicate_invite.json()["detail"] == "Invite already pending for this email"

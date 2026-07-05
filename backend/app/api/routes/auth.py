@@ -99,6 +99,15 @@ def create_invite(
     existing_user = db.scalar(select(User).where(User.email == email))
     if existing_user is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+    existing_pending_invite = db.scalar(
+        select(WorkspaceInvite).where(
+            WorkspaceInvite.workspace_id == current_user.workspace_id,
+            WorkspaceInvite.email == email,
+            WorkspaceInvite.status == WorkspaceInviteStatus.PENDING,
+        )
+    )
+    if existing_pending_invite is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Invite already pending for this email")
 
     invite = WorkspaceInvite(
         workspace_id=current_user.workspace_id,

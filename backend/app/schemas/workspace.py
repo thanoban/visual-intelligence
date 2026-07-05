@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from .auth import WorkspaceSummary
+from .auth import InviteResponse, UserSummary, WorkspaceSummary
 
 
 class IntegrationStatusResponse(BaseModel):
@@ -13,6 +13,11 @@ class IntegrationStatusResponse(BaseModel):
 class WorkspaceSettingsResponse(BaseModel):
     workspace: WorkspaceSummary
     integrations: list[IntegrationStatusResponse]
+
+
+class WorkspaceMembersResponse(BaseModel):
+    members: list[UserSummary]
+    invites: list[InviteResponse]
 
 
 class UpdateWorkspaceSettingsRequest(BaseModel):

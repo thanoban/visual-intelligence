@@ -23,6 +23,19 @@ export interface AuthSessionResponse {
   workspace: WorkspaceSummary;
 }
 
+export interface InviteResponse {
+  id: string;
+  email: string;
+  status: string;
+  token: string;
+  workspace_id: string;
+  invited_by_user_id: string | null;
+  expires_at: string | null;
+  accepted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface WorkspaceIntegrationStatus {
   provider: string;
   connected: boolean;
@@ -31,6 +44,11 @@ export interface WorkspaceIntegrationStatus {
 export interface WorkspaceSettingsResponse {
   workspace: WorkspaceSummary;
   integrations: WorkspaceIntegrationStatus[];
+}
+
+export interface WorkspaceMembersResponse {
+  members: UserSummary[];
+  invites: InviteResponse[];
 }
 
 export interface UpdateWorkspaceSettingsPayload {

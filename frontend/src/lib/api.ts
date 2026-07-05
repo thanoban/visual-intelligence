@@ -1,11 +1,13 @@
 import type {
   AuthSessionResponse,
   DraftResponse,
+  InviteResponse,
   MeetingDetailResponse,
   MeetingListResponse,
   MeetingQuestionResponse,
   ReprocessResponse,
   UpdateWorkspaceSettingsPayload,
+  WorkspaceMembersResponse,
   WorkspaceSettingsResponse,
 } from "@/lib/types";
 
@@ -79,6 +81,29 @@ export async function signUp(payload: {
       password: payload.password,
       workspace_name: payload.workspaceName,
     }),
+  });
+  return parseResponse<AuthSessionResponse>(response);
+}
+
+export async function createInvite(token: string, email: string): Promise<InviteResponse> {
+  const response = await fetch(buildApiUrl("/auth/invites"), {
+    method: "POST",
+    headers: buildHeaders(token, { "Content-Type": "application/json" }),
+    body: JSON.stringify({ email }),
+  });
+  return parseResponse<InviteResponse>(response);
+}
+
+export async function acceptInvite(payload: {
+  token: string;
+  email: string;
+  name: string;
+  password: string;
+}): Promise<AuthSessionResponse> {
+  const response = await fetch(buildApiUrl("/auth/invites/accept"), {
+    method: "POST",
+    headers: buildHeaders(undefined, { "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
   });
   return parseResponse<AuthSessionResponse>(response);
 }
@@ -204,6 +229,13 @@ export async function fetchWorkspaceSettings(token: string): Promise<WorkspaceSe
     headers: buildHeaders(token),
   });
   return parseResponse<WorkspaceSettingsResponse>(response);
+}
+
+export async function fetchWorkspaceMembers(token: string): Promise<WorkspaceMembersResponse> {
+  const response = await fetch(buildApiUrl("/workspace/members"), {
+    headers: buildHeaders(token),
+  });
+  return parseResponse<WorkspaceMembersResponse>(response);
 }
 
 export async function updateWorkspaceSettings(

@@ -60,6 +60,7 @@ The frontend now includes:
 - a meeting queue view with upload, status tracking, reprocess, delete, and search across meeting titles and transcript text
 - a meeting detail view with blob-backed audio playback, transcript jumps, evidence-linked key points and decisions, action items, an editable draft review queue, and cited meeting chat
 - a workspace settings page for language defaults, Slack delivery preferences, and integration readiness status
+- an end-to-end member invite flow with workspace roster visibility, pending invite links, and a frontend invite-acceptance page
 - backend support for the frontend path through authenticated meeting-audio streaming and local CORS defaults for `localhost` / `127.0.0.1` on ports `3000` and `3001`
 
 ## Run locally

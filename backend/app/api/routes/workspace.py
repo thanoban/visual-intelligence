@@ -6,13 +6,14 @@ from sqlalchemy.orm import Session, selectinload
 
 from ...db import get_db
 from ...dependencies import get_current_user
-from ...models.entities import IntegrationProvider, User, UserRole, Workspace
+from ...models.entities import IntegrationProvider, User, UserRole, Workspace, WorkspaceInviteStatus
 from ...schemas.workspace import (
     IntegrationStatusResponse,
     UpdateWorkspaceSettingsRequest,
+    WorkspaceMembersResponse,
     WorkspaceSettingsResponse,
 )
-from ...serializers import serialize_workspace
+from ...serializers import serialize_invite, serialize_user, serialize_workspace
 
 router = APIRouter(prefix="/workspace", tags=["workspace"])
 
@@ -27,7 +28,11 @@ def _get_workspace(db: Session, workspace_id: str) -> Workspace:
     workspace = db.scalar(
         select(Workspace)
         .where(Workspace.id == workspace_id)
-        .options(selectinload(Workspace.integrations))
+        .options(
+            selectinload(Workspace.integrations),
+            selectinload(Workspace.users),
+            selectinload(Workspace.invites),
+        )
     )
     if workspace is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
@@ -105,3 +110,26 @@ def update_workspace_settings(
     db.refresh(workspace)
     db.refresh(workspace, attribute_names=["integrations"])
     return _serialize_workspace_settings(workspace)
+
+
+@router.get("/members", response_model=WorkspaceMembersResponse)
+def get_workspace_members(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> WorkspaceMembersResponse:
+    workspace = _get_workspace(db, current_user.workspace_id)
+    members = sorted(
+        workspace.users,
+        key=lambda member: (member.role != UserRole.OWNER, member.name.casefold(), member.email.casefold()),
+    )
+    invites = sorted(
+        workspace.invites,
+        key=lambda invite: (
+            invite.status != WorkspaceInviteStatus.PENDING,
+            -(invite.created_at.timestamp()),
+        ),
+    )
+    return WorkspaceMembersResponse(
+        members=[serialize_user(member) for member in members],
+        invites=[serialize_invite(invite) for invite in invites],
+    )

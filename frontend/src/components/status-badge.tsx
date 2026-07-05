@@ -11,6 +11,8 @@ const STATUS_CLASS_BY_VALUE: Record<string, string> = {
   exported: "status-badge success",
   connected: "status-badge success",
   not_connected: "status-badge neutral",
+  owner: "status-badge success",
+  member: "status-badge neutral",
 };
 
 export function StatusBadge({ value }: { value: string }) {

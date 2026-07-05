@@ -42,6 +42,8 @@ def serialize_invite(invite: WorkspaceInvite) -> InviteResponse:
         token=invite.token,
         workspace_id=invite.workspace_id,
         invited_by_user_id=invite.invited_by_user_id,
+        expires_at=invite.expires_at,
+        accepted_at=invite.accepted_at,
         created_at=invite.created_at,
         updated_at=invite.updated_at,
     )
