@@ -93,6 +93,10 @@ export default function MeetingsPage() {
   const completedCount = meetings.filter((meeting) => meeting.status === "completed").length;
   const processingCount = meetings.filter((meeting) => isMeetingInFlight(meeting.status)).length;
   const failedCount = meetings.filter((meeting) => meeting.status === "failed").length;
+  const defaultLanguageHint =
+    typeof session?.workspace.settings.default_language_hint === "string"
+      ? session.workspace.settings.default_language_hint
+      : "auto";
 
   return (
     <AppShell
@@ -113,6 +117,7 @@ export default function MeetingsPage() {
       <section className="dashboard-grid">
         <MeetingUploadForm
           busy={uploading}
+          defaultLanguageHint={defaultLanguageHint}
           onUpload={async (payload) => {
             if (!session) {
               return;

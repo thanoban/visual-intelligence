@@ -123,6 +123,37 @@ export function MeetingDetailClient({ meetingId }: { meetingId: string }) {
   }, []);
 
   const actionItemsWithEvidence = useMemo(() => meeting?.action_items ?? [], [meeting?.action_items]);
+  const segmentsById = useMemo(
+    () => new Map((meeting?.transcript_segments ?? []).map((segment) => [segment.id, segment])),
+    [meeting?.transcript_segments],
+  );
+
+  const renderEvidenceChips = useCallback(
+    (segmentIds: string[]) => (
+      <div className="citation-row">
+        {segmentIds.map((segmentId) => {
+          const matchingSegment = segmentsById.get(segmentId);
+          if (!matchingSegment) {
+            return null;
+          }
+          return (
+            <button
+              key={segmentId}
+              type="button"
+              className="citation-chip"
+              onClick={() => {
+                setJumpRequest({ nonce: Date.now(), segmentId });
+              }}
+            >
+              <span>{formatClock(matchingSegment.start_seconds)}</span>
+              <span>{matchingSegment.speaker_label ?? "Speaker"}</span>
+            </button>
+          );
+        })}
+      </div>
+    ),
+    [segmentsById],
+  );
 
   return (
     <AppShell
@@ -238,6 +269,7 @@ export function MeetingDetailClient({ meetingId }: { meetingId: string }) {
                   meeting.analysis.key_points.map((item, index) => (
                     <div key={`${item.text}-${index}`} className="text-row">
                       <p>{item.text}</p>
+                      {item.evidence_segment_ids.length ? renderEvidenceChips(item.evidence_segment_ids) : null}
                     </div>
                   ))
                 ) : (
@@ -258,6 +290,7 @@ export function MeetingDetailClient({ meetingId }: { meetingId: string }) {
                   meeting.analysis.decisions.map((decision, index) => (
                     <div key={`${decision.text}-${index}`} className="text-row">
                       <p>{decision.text}</p>
+                      {decision.evidence_segment_ids.length ? renderEvidenceChips(decision.evidence_segment_ids) : null}
                     </div>
                   ))
                 ) : (
@@ -287,27 +320,7 @@ export function MeetingDetailClient({ meetingId }: { meetingId: string }) {
                         <span>{actionItem.owner_name ?? "Unassigned"}</span>
                         <span>{actionItem.due_date ?? "No due date"}</span>
                       </div>
-                      <div className="citation-row">
-                        {actionItem.evidence_segment_ids.map((segmentId) => {
-                          const matchingSegment = meeting.transcript_segments.find((segment) => segment.id === segmentId);
-                          if (!matchingSegment) {
-                            return null;
-                          }
-                          return (
-                            <button
-                              key={segmentId}
-                              type="button"
-                              className="citation-chip"
-                              onClick={() => {
-                                setJumpRequest({ nonce: Date.now(), segmentId });
-                              }}
-                            >
-                              <span>{formatClock(matchingSegment.start_seconds)}</span>
-                              <span>{matchingSegment.speaker_label ?? "Speaker"}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {renderEvidenceChips(actionItem.evidence_segment_ids)}
                     </div>
                   ))
                 ) : (

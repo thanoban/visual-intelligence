@@ -58,7 +58,7 @@ The frontend now includes:
 
 - a Next.js App Router client for sign-up, sign-in, and persisted workspace sessions
 - a meeting queue view with upload, status tracking, reprocess, delete, and search across meeting titles and transcript text
-- a meeting detail view with blob-backed audio playback, transcript jumps, bilingual summaries, action items, an editable draft review queue, and cited meeting chat
+- a meeting detail view with blob-backed audio playback, transcript jumps, evidence-linked key points and decisions, action items, an editable draft review queue, and cited meeting chat
 - a workspace settings page for language defaults, Slack delivery preferences, and integration readiness status
 - backend support for the frontend path through authenticated meeting-audio streaming and local CORS defaults for `localhost` / `127.0.0.1` on ports `3000` and `3001`
 
