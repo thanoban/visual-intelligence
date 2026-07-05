@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MeetingSummary(BaseModel):
@@ -57,6 +57,10 @@ class DraftResponse(BaseModel):
     external_reference: str | None
     acted_by_user_id: str | None
     acted_at: datetime | None
+
+
+class UpdateDraftRequest(BaseModel):
+    payload: dict[str, object] = Field(default_factory=dict)
 
 
 class MeetingDetailResponse(MeetingSummary):

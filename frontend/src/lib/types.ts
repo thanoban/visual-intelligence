@@ -77,6 +77,10 @@ export interface DraftResponse {
   acted_at: string | null;
 }
 
+export interface UpdateDraftPayload {
+  payload: Record<string, unknown>;
+}
+
 export interface MeetingDetailResponse extends MeetingSummary {
   transcript_segments: TranscriptSegmentResponse[];
   analysis: MeetingAnalysisResponse | null;

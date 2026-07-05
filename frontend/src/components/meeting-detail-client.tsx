@@ -7,25 +7,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { ChatPanel } from "@/components/chat-panel";
+import { DraftQueue } from "@/components/draft-queue";
 import { useSession } from "@/components/session-provider";
 import { StatusBadge } from "@/components/status-badge";
 import { type JumpRequest, TranscriptPlayer } from "@/components/transcript-player";
 import { ApiError, deleteMeeting, fetchMeetingAudioBlob, fetchMeetingDetail, reprocessMeeting } from "@/lib/api";
 import { formatClock, formatDateTime, formatDuration } from "@/lib/format";
-import type { DraftResponse, MeetingDetailResponse } from "@/lib/types";
-
-function draftPreviewText(draft: DraftResponse): string {
-  if (typeof draft.payload.summary === "string") {
-    return draft.payload.summary;
-  }
-  if (typeof draft.payload.text === "string") {
-    return draft.payload.text;
-  }
-  if (typeof draft.payload.description === "string") {
-    return draft.payload.description;
-  }
-  return "Structured draft payload ready for review.";
-}
+import type { MeetingDetailResponse } from "@/lib/types";
 
 function isMeetingStillRunning(status: string): boolean {
   return status === "uploaded" || status === "processing";
@@ -332,24 +320,17 @@ export function MeetingDetailClient({ meetingId }: { meetingId: string }) {
               <div className="section-heading">
                 <div>
                   <h2>Draft queue</h2>
-                  <p>Reviewable Jira and Slack draft payloads built from the meeting output.</p>
+                  <p>Review, edit, approve, or dismiss the Jira and Slack drafts built from the meeting output.</p>
                 </div>
               </div>
-              <div className="stack-list">
-                {meeting.drafts.length ? (
-                  meeting.drafts.map((draft) => (
-                    <div key={draft.id} className="draft-row">
-                      <div className="row-title">
-                        <strong>{draft.kind.replaceAll("_", " ")}</strong>
-                        <StatusBadge value={draft.status} />
-                      </div>
-                      <p className="long-copy compact-copy">{draftPreviewText(draft)}</p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty-state compact">Drafts will appear once the draft stage completes.</div>
-                )}
-              </div>
+              <DraftQueue
+                accessToken={session?.access_token ?? ""}
+                drafts={meeting.drafts}
+                meetingId={meeting.id}
+                onRefresh={async () => {
+                  await loadMeeting(false);
+                }}
+              />
             </article>
           </section>
 

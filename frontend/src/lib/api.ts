@@ -1,5 +1,6 @@
 import type {
   AuthSessionResponse,
+  DraftResponse,
   MeetingDetailResponse,
   MeetingListResponse,
   MeetingQuestionResponse,
@@ -159,4 +160,34 @@ export async function askMeetingQuestion(
     body: JSON.stringify({ question }),
   });
   return parseResponse<MeetingQuestionResponse>(response);
+}
+
+export async function updateDraft(
+  token: string,
+  meetingId: string,
+  draftId: string,
+  payload: Record<string, unknown>,
+): Promise<DraftResponse> {
+  const response = await fetch(buildApiUrl(`/meetings/${meetingId}/drafts/${draftId}`), {
+    method: "PATCH",
+    headers: buildHeaders(token, { "Content-Type": "application/json" }),
+    body: JSON.stringify({ payload }),
+  });
+  return parseResponse<DraftResponse>(response);
+}
+
+export async function approveDraft(token: string, meetingId: string, draftId: string): Promise<DraftResponse> {
+  const response = await fetch(buildApiUrl(`/meetings/${meetingId}/drafts/${draftId}/approve`), {
+    method: "POST",
+    headers: buildHeaders(token),
+  });
+  return parseResponse<DraftResponse>(response);
+}
+
+export async function dismissDraft(token: string, meetingId: string, draftId: string): Promise<DraftResponse> {
+  const response = await fetch(buildApiUrl(`/meetings/${meetingId}/drafts/${draftId}/dismiss`), {
+    method: "POST",
+    headers: buildHeaders(token),
+  });
+  return parseResponse<DraftResponse>(response);
 }

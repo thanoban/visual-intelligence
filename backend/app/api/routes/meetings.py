@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import mimetypes
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Response, UploadFile, status
@@ -10,17 +11,31 @@ from sqlalchemy.orm import Session, selectinload
 
 from ...db import get_db
 from ...dependencies import get_current_user
-from ...models.entities import Draft, Meeting, MeetingAnalysis, MeetingSource, MeetingStatus, TranscriptSegment, User
+from ...models.entities import (
+    ActionItemState,
+    AuditEvent,
+    Draft,
+    DraftKind,
+    DraftStatus,
+    Meeting,
+    MeetingAnalysis,
+    MeetingSource,
+    MeetingStatus,
+    TranscriptSegment,
+    User,
+)
 from ...schemas.meetings import (
     AskMeetingQuestionRequest,
+    DraftResponse,
     MeetingAnswerCitationResponse,
     MeetingDetailResponse,
     MeetingListResponse,
     MeetingQuestionResponse,
     MeetingSummary,
     ReprocessResponse,
+    UpdateDraftRequest,
 )
-from ...serializers import serialize_meeting_detail, serialize_meeting_summary
+from ...serializers import serialize_draft, serialize_meeting_detail, serialize_meeting_summary
 from ...services.llm import MeetingLlmProvider, get_meeting_llm_provider
 from ...services.orchestrator import ProcessingOrchestrator, get_processing_orchestrator
 from ...services.storage import LocalStorageService, get_storage_service
@@ -46,6 +61,81 @@ def _get_workspace_meeting(db: Session, workspace_id: str, meeting_id: str) -> M
     if meeting is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
     return meeting
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _get_workspace_meeting_draft(db: Session, workspace_id: str, meeting_id: str, draft_id: str) -> tuple[Meeting, Draft]:
+    meeting = _get_workspace_meeting(db, workspace_id, meeting_id)
+    draft = next((candidate for candidate in meeting.drafts if candidate.id == draft_id), None)
+    if draft is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+    return meeting, draft
+
+
+def _assert_draft_editable(draft: Draft) -> None:
+    if draft.status != DraftStatus.DRAFT:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only drafts in draft status can be edited or reviewed",
+        )
+
+
+def _build_updated_draft_payload(draft: Draft, payload_patch: dict[str, object]) -> dict[str, object]:
+    next_payload = {**draft.payload, **payload_patch}
+
+    if draft.kind == DraftKind.JIRA_ISSUE:
+        if not isinstance(next_payload.get("summary"), str) or not str(next_payload["summary"]).strip():
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Jira drafts require a summary")
+        if not isinstance(next_payload.get("description"), str) or not str(next_payload["description"]).strip():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Jira drafts require a description",
+            )
+        evidence_segment_ids = next_payload.get("evidence_segment_ids")
+        if not isinstance(evidence_segment_ids, list):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Jira drafts require evidence_segment_ids",
+            )
+        return next_payload
+
+    if draft.kind == DraftKind.SLACK_MESSAGE:
+        if not isinstance(next_payload.get("title"), str) or not str(next_payload["title"]).strip():
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Slack drafts require a title")
+        if not isinstance(next_payload.get("summary_english"), str) or not str(next_payload["summary_english"]).strip():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Slack drafts require an English summary",
+            )
+        action_items = next_payload.get("action_items")
+        if not isinstance(action_items, list):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Slack drafts require an action_items list",
+            )
+        return next_payload
+
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unsupported draft kind")
+
+
+def _record_draft_audit_event(*, db: Session, current_user: User, meeting_id: str, draft: Draft, action: str) -> None:
+    db.add(
+        AuditEvent(
+            workspace_id=current_user.workspace_id,
+            actor_user_id=current_user.id,
+            action=action,
+            target_type="draft",
+            target_id=draft.id,
+            metadata_json={
+                "meeting_id": meeting_id,
+                "draft_kind": draft.kind.value,
+                "draft_status": draft.status.value,
+            },
+        )
+    )
 
 
 @router.post("/upload", response_model=MeetingSummary, status_code=status.HTTP_201_CREATED)
@@ -114,6 +204,96 @@ def get_meeting_detail(
 ) -> MeetingDetailResponse:
     meeting = _get_workspace_meeting(db, current_user.workspace_id, meeting_id)
     return serialize_meeting_detail(meeting)
+
+
+@router.get("/{meeting_id}/drafts", response_model=list[DraftResponse])
+def list_meeting_drafts(
+    meeting_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[DraftResponse]:
+    meeting = _get_workspace_meeting(db, current_user.workspace_id, meeting_id)
+    return [serialize_draft(draft) for draft in meeting.drafts]
+
+
+@router.patch("/{meeting_id}/drafts/{draft_id}", response_model=DraftResponse)
+def update_meeting_draft(
+    meeting_id: str,
+    draft_id: str,
+    payload: UpdateDraftRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> DraftResponse:
+    meeting, draft = _get_workspace_meeting_draft(db, current_user.workspace_id, meeting_id, draft_id)
+    _assert_draft_editable(draft)
+
+    draft.payload = _build_updated_draft_payload(draft, payload.payload)
+    db.add(draft)
+    _record_draft_audit_event(
+        db=db,
+        current_user=current_user,
+        meeting_id=meeting.id,
+        draft=draft,
+        action="draft.updated",
+    )
+    db.commit()
+    db.refresh(draft)
+    return serialize_draft(draft)
+
+
+@router.post("/{meeting_id}/drafts/{draft_id}/approve", response_model=DraftResponse)
+def approve_meeting_draft(
+    meeting_id: str,
+    draft_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> DraftResponse:
+    meeting, draft = _get_workspace_meeting_draft(db, current_user.workspace_id, meeting_id, draft_id)
+    _assert_draft_editable(draft)
+
+    draft.status = DraftStatus.APPROVED
+    draft.acted_by_user_id = current_user.id
+    draft.acted_at = _utc_now()
+    db.add(draft)
+    _record_draft_audit_event(
+        db=db,
+        current_user=current_user,
+        meeting_id=meeting.id,
+        draft=draft,
+        action="draft.approved",
+    )
+    db.commit()
+    db.refresh(draft)
+    return serialize_draft(draft)
+
+
+@router.post("/{meeting_id}/drafts/{draft_id}/dismiss", response_model=DraftResponse)
+def dismiss_meeting_draft(
+    meeting_id: str,
+    draft_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> DraftResponse:
+    meeting, draft = _get_workspace_meeting_draft(db, current_user.workspace_id, meeting_id, draft_id)
+    _assert_draft_editable(draft)
+
+    draft.status = DraftStatus.DISMISSED
+    draft.acted_by_user_id = current_user.id
+    draft.acted_at = _utc_now()
+    db.add(draft)
+    if draft.action_item is not None:
+        draft.action_item.state = ActionItemState.DISMISSED
+        db.add(draft.action_item)
+    _record_draft_audit_event(
+        db=db,
+        current_user=current_user,
+        meeting_id=meeting.id,
+        draft=draft,
+        action="draft.dismissed",
+    )
+    db.commit()
+    db.refresh(draft)
+    return serialize_draft(draft)
 
 
 @router.get("/{meeting_id}/audio")
