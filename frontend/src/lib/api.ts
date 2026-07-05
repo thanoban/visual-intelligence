@@ -90,8 +90,13 @@ export async function fetchSession(token: string): Promise<AuthSessionResponse> 
   return parseResponse<AuthSessionResponse>(response);
 }
 
-export async function listMeetings(token: string): Promise<MeetingListResponse> {
-  const response = await fetch(buildApiUrl("/meetings"), {
+export async function listMeetings(token: string, query = ""): Promise<MeetingListResponse> {
+  const searchParams = new URLSearchParams();
+  if (query.trim()) {
+    searchParams.set("query", query.trim());
+  }
+  const path = searchParams.size ? `/meetings?${searchParams.toString()}` : "/meetings";
+  const response = await fetch(buildApiUrl(path), {
     headers: buildHeaders(token),
   });
   return parseResponse<MeetingListResponse>(response);

@@ -201,3 +201,41 @@ def test_pipeline_leaves_owner_user_empty_when_name_match_is_ambiguous(processin
 
     assert action_items_by_owner["Ravi"]["owner_user_id"] is None
     assert action_items_by_owner["Nisha"]["owner_user_id"] == nisha_id
+
+
+def test_meeting_list_search_matches_title_and_transcript_text(processing_client: TestClient) -> None:
+    session = _sign_up(
+        processing_client,
+        email="search-owner@example.com",
+        name="Search Owner",
+        workspace_name="Search Workspace",
+    )
+    headers = _auth_headers(session["access_token"])
+
+    first_upload = processing_client.post(
+        "/meetings/upload",
+        headers=headers,
+        files={"file": ("search-en.wav", b"fake audio bytes", "audio/wav")},
+        data={"title": "Sprint Sync", "language_hint": "en"},
+    )
+    assert first_upload.status_code == 201, first_upload.text
+
+    second_upload = processing_client.post(
+        "/meetings/upload",
+        headers=headers,
+        files={"file": ("search-ta.wav", b"fake audio bytes", "audio/wav")},
+        data={"title": "Tamil Review", "language_hint": "ta"},
+    )
+    assert second_upload.status_code == 201, second_upload.text
+
+    title_search = processing_client.get("/meetings", headers=headers, params={"query": "Sprint Sync"})
+    assert title_search.status_code == 200, title_search.text
+    title_body = title_search.json()
+    assert title_body["total"] == 1
+    assert title_body["items"][0]["id"] == first_upload.json()["id"]
+
+    transcript_search = processing_client.get("/meetings", headers=headers, params={"query": "billing patch"})
+    assert transcript_search.status_code == 200, transcript_search.text
+    transcript_body = transcript_search.json()
+    assert transcript_body["total"] == 1
+    assert transcript_body["items"][0]["id"] == second_upload.json()["id"]

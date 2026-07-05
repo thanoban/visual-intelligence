@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, CircleAlert, LoaderCircle, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { MeetingUploadForm } from "@/components/meeting-upload-form";
@@ -28,7 +28,7 @@ export default function MeetingsPage() {
   const [search, setSearch] = useState("");
 
   const loadMeetings = useCallback(
-    async (showLoading: boolean) => {
+    async (showLoading: boolean, searchQuery: string) => {
       if (!session) {
         return;
       }
@@ -38,7 +38,7 @@ export default function MeetingsPage() {
       }
 
       try {
-        const response = await listMeetings(session.access_token);
+        const response = await listMeetings(session.access_token, searchQuery);
         setMeetings(response.items);
         setError(null);
       } catch (loadError) {
@@ -63,8 +63,20 @@ export default function MeetingsPage() {
       router.replace("/sign-in");
       return;
     }
-    void loadMeetings(true);
+    void loadMeetings(true, "");
   }, [hydrated, loadMeetings, router, session]);
+
+  useEffect(() => {
+    if (!hydrated || !session) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void loadMeetings(false, search);
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [hydrated, loadMeetings, search, session]);
 
   useEffect(() => {
     if (!meetings.some((meeting) => isMeetingInFlight(meeting.status))) {
@@ -72,25 +84,11 @@ export default function MeetingsPage() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      void loadMeetings(false);
+      void loadMeetings(false, search);
     }, 2500);
 
     return () => window.clearTimeout(timeoutId);
-  }, [loadMeetings, meetings]);
-
-  const filteredMeetings = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-    if (!normalizedSearch) {
-      return meetings;
-    }
-
-    return meetings.filter((meeting) =>
-      [meeting.title, meeting.status, meeting.detected_language ?? "", meeting.language_hint ?? ""]
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedSearch),
-    );
-  }, [meetings, search]);
+  }, [loadMeetings, meetings, search]);
 
   const completedCount = meetings.filter((meeting) => meeting.status === "completed").length;
   const processingCount = meetings.filter((meeting) => isMeetingInFlight(meeting.status)).length;
@@ -104,7 +102,7 @@ export default function MeetingsPage() {
         <button
           type="button"
           className="secondary-button"
-          onClick={() => void loadMeetings(false)}
+          onClick={() => void loadMeetings(false, search)}
           disabled={loading}
         >
           <RefreshCw size={16} />
@@ -122,7 +120,7 @@ export default function MeetingsPage() {
             setUploading(true);
             try {
               await uploadMeeting(session.access_token, payload);
-              await loadMeetings(false);
+              await loadMeetings(false, search);
             } finally {
               setUploading(false);
             }
@@ -154,19 +152,19 @@ export default function MeetingsPage() {
             </div>
           </div>
           <label className="search-field">
-            <Search size={16} />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by title, status, or language"
-            />
-          </label>
+              <Search size={16} />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by title or transcript text"
+              />
+            </label>
           {error ? <p className="error-text">{error}</p> : null}
           <div className="meeting-list">
             {loading ? (
               <div className="empty-state compact">Loading meetings...</div>
-            ) : filteredMeetings.length ? (
-              filteredMeetings.map((meeting) => (
+            ) : meetings.length ? (
+              meetings.map((meeting) => (
                 <article key={meeting.id} className="meeting-row">
                   <div className="meeting-copy">
                     <div className="row-title">
@@ -191,7 +189,7 @@ export default function MeetingsPage() {
                         setBusyMeetingId(meeting.id);
                         try {
                           await reprocessMeeting(session.access_token, meeting.id);
-                          await loadMeetings(false);
+                          await loadMeetings(false, search);
                         } finally {
                           setBusyMeetingId(null);
                         }
@@ -214,7 +212,7 @@ export default function MeetingsPage() {
                         setBusyMeetingId(meeting.id);
                         try {
                           await deleteMeeting(session.access_token, meeting.id);
-                          await loadMeetings(false);
+                          await loadMeetings(false, search);
                         } finally {
                           setBusyMeetingId(null);
                         }
@@ -232,7 +230,11 @@ export default function MeetingsPage() {
                 </article>
               ))
             ) : (
-              <div className="empty-state compact">No meetings yet. Upload a recording to start the pipeline.</div>
+              <div className="empty-state compact">
+                {search.trim()
+                  ? "No meetings matched that title or transcript text yet."
+                  : "No meetings yet. Upload a recording to start the pipeline."}
+              </div>
             )}
           </div>
         </section>

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Response, UploadFile, status
 from fastapi.responses import FileResponse
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from ...db import get_db
@@ -53,6 +53,17 @@ def _meeting_query_for_workspace(workspace_id: str):
             selectinload(Meeting.action_items),
             selectinload(Meeting.drafts),
         )
+    )
+
+
+def _meeting_search_filter(query: str):
+    search_term = f"%{query}%"
+    transcript_matches = select(TranscriptSegment.meeting_id).where(TranscriptSegment.text.ilike(search_term))
+    return or_(
+        Meeting.title.ilike(search_term),
+        Meeting.detected_language.ilike(search_term),
+        Meeting.language_hint.ilike(search_term),
+        Meeting.id.in_(transcript_matches),
     )
 
 
@@ -178,16 +189,25 @@ def upload_meeting(
 def list_meetings(
     limit: int = 20,
     offset: int = 0,
+    query: str | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> MeetingListResponse:
     limit = max(1, min(limit, 100))
     offset = max(0, offset)
+    normalized_query = query.strip() if query else ""
 
-    total = db.scalar(select(func.count(Meeting.id)).where(Meeting.workspace_id == current_user.workspace_id)) or 0
+    count_query = select(func.count(Meeting.id)).where(Meeting.workspace_id == current_user.workspace_id)
+    meetings_query = _meeting_query_for_workspace(current_user.workspace_id)
+    if normalized_query:
+        search_filter = _meeting_search_filter(normalized_query)
+        count_query = count_query.where(search_filter)
+        meetings_query = meetings_query.where(search_filter)
+
+    total = db.scalar(count_query) or 0
     meetings = list(
         db.scalars(
-            _meeting_query_for_workspace(current_user.workspace_id)
+            meetings_query
             .order_by(Meeting.created_at.desc())
             .offset(offset)
             .limit(limit)
