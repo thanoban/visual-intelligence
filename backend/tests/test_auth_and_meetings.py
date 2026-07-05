@@ -147,3 +147,78 @@ def test_meeting_upload_list_detail_delete_and_workspace_boundary(client: TestCl
 
     missing_after_delete = client.get(f"/meetings/{meeting['id']}", headers=_auth_headers(first_user["access_token"]))
     assert missing_after_delete.status_code == 404
+
+
+def test_workspace_settings_allow_owner_update_and_member_read(client: TestClient) -> None:
+    owner_session = _sign_up(
+        client,
+        email="settings-owner@example.com",
+        name="Settings Owner",
+        workspace_name="Settings Workspace",
+    )
+    owner_headers = _auth_headers(owner_session["access_token"])
+
+    invite_response = client.post(
+        "/auth/invites",
+        headers=owner_headers,
+        json={"email": "settings-member@example.com"},
+    )
+    assert invite_response.status_code == 201, invite_response.text
+    invite = invite_response.json()
+
+    member_response = client.post(
+        "/auth/invites/accept",
+        json={
+            "token": invite["token"],
+            "email": "settings-member@example.com",
+            "name": "Settings Member",
+            "password": "pass12345",
+        },
+    )
+    assert member_response.status_code == 201, member_response.text
+    member_session = member_response.json()
+
+    initial_settings_response = client.get("/workspace/settings", headers=owner_headers)
+    assert initial_settings_response.status_code == 200, initial_settings_response.text
+    initial_body = initial_settings_response.json()
+    assert initial_body["workspace"]["settings"]["default_language_hint"] == "auto"
+    assert initial_body["workspace"]["settings"]["slack_channel"] == ""
+    assert initial_body["workspace"]["settings"]["slack_auto_post"] is False
+    assert {item["provider"] for item in initial_body["integrations"]} == {"google", "slack", "jira"}
+    assert all(item["connected"] is False for item in initial_body["integrations"])
+
+    member_update_response = client.patch(
+        "/workspace/settings",
+        headers=_auth_headers(member_session["access_token"]),
+        json={
+            "default_language_hint": "si",
+            "slack_channel": "#delivery",
+            "slack_auto_post": True,
+        },
+    )
+    assert member_update_response.status_code == 403
+
+    owner_update_response = client.patch(
+        "/workspace/settings",
+        headers=owner_headers,
+        json={
+            "default_language_hint": "si",
+            "slack_channel": "#delivery",
+            "slack_auto_post": True,
+        },
+    )
+    assert owner_update_response.status_code == 200, owner_update_response.text
+    updated_body = owner_update_response.json()
+    assert updated_body["workspace"]["settings"]["default_language_hint"] == "si"
+    assert updated_body["workspace"]["settings"]["slack_channel"] == "#delivery"
+    assert updated_body["workspace"]["settings"]["slack_auto_post"] is True
+
+    member_settings_response = client.get(
+        "/workspace/settings",
+        headers=_auth_headers(member_session["access_token"]),
+    )
+    assert member_settings_response.status_code == 200, member_settings_response.text
+    member_body = member_settings_response.json()
+    assert member_body["workspace"]["settings"]["default_language_hint"] == "si"
+    assert member_body["workspace"]["settings"]["slack_channel"] == "#delivery"
+    assert member_body["workspace"]["settings"]["slack_auto_post"] is True

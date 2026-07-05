@@ -23,6 +23,22 @@ export interface AuthSessionResponse {
   workspace: WorkspaceSummary;
 }
 
+export interface WorkspaceIntegrationStatus {
+  provider: string;
+  connected: boolean;
+}
+
+export interface WorkspaceSettingsResponse {
+  workspace: WorkspaceSummary;
+  integrations: WorkspaceIntegrationStatus[];
+}
+
+export interface UpdateWorkspaceSettingsPayload {
+  default_language_hint: string;
+  slack_channel: string;
+  slack_auto_post: boolean;
+}
+
 export interface MeetingSummary {
   id: string;
   workspace_id: string;

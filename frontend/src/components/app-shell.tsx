@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { House, LogOut } from "lucide-react";
+import { House, LogOut, SlidersHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { useSession } from "@/components/session-provider";
@@ -37,6 +37,10 @@ export function AppShell({
             <Link href="/meetings" className="icon-link">
               <House size={16} />
               <span>Meetings</span>
+            </Link>
+            <Link href="/settings" className="icon-link">
+              <SlidersHorizontal size={16} />
+              <span>Settings</span>
             </Link>
           </nav>
           <div className="topbar-user">

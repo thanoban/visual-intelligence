@@ -5,6 +5,8 @@ import type {
   MeetingListResponse,
   MeetingQuestionResponse,
   ReprocessResponse,
+  UpdateWorkspaceSettingsPayload,
+  WorkspaceSettingsResponse,
 } from "@/lib/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -190,4 +192,23 @@ export async function dismissDraft(token: string, meetingId: string, draftId: st
     headers: buildHeaders(token),
   });
   return parseResponse<DraftResponse>(response);
+}
+
+export async function fetchWorkspaceSettings(token: string): Promise<WorkspaceSettingsResponse> {
+  const response = await fetch(buildApiUrl("/workspace/settings"), {
+    headers: buildHeaders(token),
+  });
+  return parseResponse<WorkspaceSettingsResponse>(response);
+}
+
+export async function updateWorkspaceSettings(
+  token: string,
+  payload: UpdateWorkspaceSettingsPayload,
+): Promise<WorkspaceSettingsResponse> {
+  const response = await fetch(buildApiUrl("/workspace/settings"), {
+    method: "PATCH",
+    headers: buildHeaders(token, { "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
+  });
+  return parseResponse<WorkspaceSettingsResponse>(response);
 }

@@ -9,6 +9,8 @@ const STATUS_CLASS_BY_VALUE: Record<string, string> = {
   dismissed: "status-badge danger",
   open: "status-badge neutral",
   exported: "status-badge success",
+  connected: "status-badge success",
+  not_connected: "status-badge neutral",
 };
 
 export function StatusBadge({ value }: { value: string }) {
