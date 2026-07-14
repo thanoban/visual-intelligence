@@ -1,8 +1,8 @@
-# VisualSprint — Planning Documents Index
+# VisualSprint — Documentation Index
 
 **Product:** VisualSprint — AI meeting intelligence platform for software teams, with best-in-class Sinhala/Tamil/English (code-switched) understanding.
 
-**Status:** Planning complete. Development is handed off to a coding agent that must follow these documents in order.
+**Status:** Planning documents and implementation guides now live together here. Use the planning set to understand what the product should become, and the implementation guides to understand how the current code actually works.
 
 ## Read order
 
@@ -15,6 +15,39 @@
 | 4 | [04-LANGUAGE-STRATEGY.md](04-LANGUAGE-STRATEGY.md) | Sinhala/Tamil ASR benchmark, data collection, fine-tuning plan |
 | 5 | [05-INTEGRATIONS-PLAN.md](05-INTEGRATIONS-PLAN.md) | Meeting bot capture, Jira, Slack, Calendar — flows and requirements |
 | 6 | [06-BUILD-PLAN.md](06-BUILD-PLAN.md) | Epic/task breakdown for the coding agent, with acceptance criteria and build order |
+| 7 | [07-DEVELOPMENT-PLAN.md](07-DEVELOPMENT-PLAN.md) | Living status + full roadmap: what is built (Epics 0–3), what is next, milestones, parallel product/language tracks |
+| 8 | [08-SYSTEM-PLAN.md](08-SYSTEM-PLAN.md) | Full as-built + target system: component topology, module map, data flows, provider seams, security, scaling, environments |
+| 9 | [CORRECTIONS.md](CORRECTIONS.md) | Deviations and required fixes found reviewing the current build, prioritized (P0 → P2) |
+| 10 | [10-PLATFORM-FOUNDATIONS.md](10-PLATFORM-FOUNDATIONS.md) | Learning guide for repo structure, runtime wiring, stack choices, dependency injection, and how to read the codebase |
+| 11 | [11-AUTH-WORKSPACE-AND-INVITES.md](11-AUTH-WORKSPACE-AND-INVITES.md) | Deep explanation of sign-up, sign-in, sessions, roles, invites, workspace settings, and tenant security |
+| 12 | [12-MEETING-INGEST-AND-PIPELINE.md](12-MEETING-INGEST-AND-PIPELINE.md) | Deep explanation of upload, storage, normalization, orchestration, processing stages, retries, reprocess, and search |
+| 13 | [13-ANALYSIS-DRAFTS-AND-CHAT.md](13-ANALYSIS-DRAFTS-AND-CHAT.md) | Deep explanation of the LLM layer, structured output, chunking, action items, drafts, audit events, and meeting chat |
+| 14 | [14-FRONTEND-APP-FLOWS.md](14-FRONTEND-APP-FLOWS.md) | Deep explanation of pages, components, API client patterns, session state, transcript jumps, and UI interaction flows |
+| 15 | [15-TESTING-AND-DEBUGGING.md](15-TESTING-AND-DEBUGGING.md) | How the test harness works, what each test group covers, how to debug the main flows, and how to extend the repo safely |
+
+## How to learn this project
+
+If you want to learn the repo in a practical order, read:
+
+1. [08-SYSTEM-PLAN.md](08-SYSTEM-PLAN.md) for the whole-system picture
+2. [10-PLATFORM-FOUNDATIONS.md](10-PLATFORM-FOUNDATIONS.md) for stack and runtime wiring
+3. [11-AUTH-WORKSPACE-AND-INVITES.md](11-AUTH-WORKSPACE-AND-INVITES.md)
+4. [12-MEETING-INGEST-AND-PIPELINE.md](12-MEETING-INGEST-AND-PIPELINE.md)
+5. [13-ANALYSIS-DRAFTS-AND-CHAT.md](13-ANALYSIS-DRAFTS-AND-CHAT.md)
+6. [14-FRONTEND-APP-FLOWS.md](14-FRONTEND-APP-FLOWS.md)
+7. [15-TESTING-AND-DEBUGGING.md](15-TESTING-AND-DEBUGGING.md)
+
+## Build status
+
+The implementation has moved beyond the older planning snapshot. The repo now includes:
+
+- auth, workspace membership, invites, and settings
+- meeting upload, processing, transcript review, and transcript-aware search
+- evidence-linked key points, decisions, and action items
+- editable draft review for Jira and Slack drafts
+- cited meeting chat
+
+See [07-DEVELOPMENT-PLAN.md](07-DEVELOPMENT-PLAN.md) for the roadmap view, [08-SYSTEM-PLAN.md](08-SYSTEM-PLAN.md) for the whole-system explanation, and the `10`-through-`15` guides for feature-by-feature learning.
 
 ## Locked decisions (do not re-litigate)
 
